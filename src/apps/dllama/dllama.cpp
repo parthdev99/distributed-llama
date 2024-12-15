@@ -43,6 +43,9 @@ void generate(Inference* inference, SocketPool* socketPool, Tokenizer *tokenizer
     unsigned long totalGenerationTime = 0;
     unsigned long totalInferenceTime = 0;
     unsigned long totalTransferTime = 0;
+    unsigned long firstTokenGenerationTime = 0;
+    bool firstTokenGenerated = false;
+
     while (pos < args->steps) {
         unsigned long startTime = timeMs();
         float* logits = inference->infer(token, pos);
@@ -61,6 +64,11 @@ void generate(Inference* inference, SocketPool* socketPool, Tokenizer *tokenizer
         pos++;
 
         unsigned long generationTime = timeMs() - startTime;
+
+        if (!firstTokenGenerated) {
+            firstTokenGenerationTime = generationTime;
+            firstTokenGenerated = true;
+        }
 
         totalGenerationTime += generationTime;
         totalInferenceTime += inferenceTime;
@@ -87,12 +95,15 @@ void generate(Inference* inference, SocketPool* socketPool, Tokenizer *tokenizer
 
     if (!args->benchmark) printf("\n");
     double avgGenerationTime = totalGenerationTime / (double)pos;
+    double prefillThroughput = 1000.0 / (firstTokenGenerationTime / (double)(numPromptTokens + 1));
     printf("Generated tokens:    %d\n", pos);
     printf("Avg tokens / second: %.2f\n", 1000.0 / avgGenerationTime);
     printf("Avg generation time: %.2f ms\n", avgGenerationTime);
     printf("Avg inference time:  %.2f ms\n", totalInferenceTime / (double)pos);
     printf("Avg transfer time:   %.2f ms\n", totalTransferTime / (double)pos);
+    printf("Prefill throughput:  %.2f tokens/second\n", prefillThroughput);
 }
+
 
 size_t readStdin(const char* guide, char* buffer, size_t bufsize) {
     fflush(stdin);
