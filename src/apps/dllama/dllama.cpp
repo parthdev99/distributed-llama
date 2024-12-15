@@ -18,7 +18,7 @@
 void generate(Inference* inference, SocketPool* socketPool, Tokenizer *tokenizer, Sampler *sampler, AppArgs* args, TransformerSpec* spec) {
     if (args->prompt == NULL)
         throw BadArgumentException("Prompt is required");
-    unsigned long startTime = timeMs();
+    unsigned long startTime_prefill = timeMs();
     // encode the (string) prompt into tokens sequence
     int numPromptTokens = 0;
     int* promptTokens = new int[strlen(args->prompt) + 3]; // +3 for '\0', ?BOS, ?EOS
@@ -47,7 +47,7 @@ void generate(Inference* inference, SocketPool* socketPool, Tokenizer *tokenizer
     bool firstTokenGenerated = false;
 
     while (pos < args->steps) {
-        
+        unsigned long startTime = timeMs();
         float* logits = inference->infer(token, pos);
 
         inference->getStats(&inferenceTime, &transferTime);
@@ -64,9 +64,9 @@ void generate(Inference* inference, SocketPool* socketPool, Tokenizer *tokenizer
         pos++;
 
         unsigned long generationTime = timeMs() - startTime;
-
+        unsigned long generationTime_prefill = timeMs() - startTime_prefill;
         if (!firstTokenGenerated) {
-            firstTokenGenerationTime = generationTime;
+            firstTokenGenerationTime = generationTime_prefill;
             firstTokenGenerated = true;
         }
 
